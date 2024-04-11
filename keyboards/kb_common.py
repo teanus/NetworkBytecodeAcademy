@@ -1,6 +1,6 @@
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
-listKb = ['кнопка 1', 'кнопка 2', 'кнопка 3']
+listKb = ["кнопка 1", "кнопка 2", "кнопка 3"]
 
 # Создаем клавиатуру
 keyboard = ReplyKeyboardMarkup(resize_keyboard=True)

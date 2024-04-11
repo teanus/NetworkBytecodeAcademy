@@ -1,1 +1,1 @@
-from keyboards  import kb_admin, kb_student, kb_other
+from keyboards import kb_admin, kb_other, kb_student

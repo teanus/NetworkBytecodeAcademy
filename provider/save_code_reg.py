@@ -1,5 +1,6 @@
-import aiosqlite
 import time
+
+import aiosqlite
 
 
 class SqliteSaveCode:
@@ -13,8 +14,10 @@ class SqliteSaveCode:
             self.cursor = await self.connection.cursor()
             if self.connection:
                 print("SQLite подключился")
-            table_save_code = "CREATE TABLE IF NOT EXISTS registration_codes(id INTEGER PRIMARY KEY,email TEXT, " \
-                              "code TEXT, timestamp REAL) "
+            table_save_code = (
+                "CREATE TABLE IF NOT EXISTS registration_codes(id INTEGER PRIMARY KEY,email TEXT, "
+                "code TEXT, timestamp REAL) "
+            )
 
             await self.execute_query(table_save_code)
 
@@ -69,13 +72,16 @@ class SqliteSaveCode:
         try:
             await self.execute_query(
                 "INSERT OR REPLACE INTO registration_codes (email, code, timestamp) VALUES (?, ?, ?)",
-                (email, code, time.time()))
+                (email, code, time.time()),
+            )
         except aiosqlite.Error as error:
             print(f"Ошибка при сохранении кода: {error}")
 
     async def get_code(self, email):
         try:
-            row = await self.fetch_one("SELECT code FROM registration_codes WHERE email = ?", (email,))
+            row = await self.fetch_one(
+                "SELECT code FROM registration_codes WHERE email = ?", (email,)
+            )
             return row[0] if row else None
         except aiosqlite.Error as error:
             print(f"Ошибка при получении кода: {error}")
@@ -83,7 +89,9 @@ class SqliteSaveCode:
 
     async def get_code_timestamp(self, email):
         try:
-            row = await self.fetch_one("SELECT timestamp FROM registration_codes WHERE email = ?", (email,))
+            row = await self.fetch_one(
+                "SELECT timestamp FROM registration_codes WHERE email = ?", (email,)
+            )
             return row[0] if row else None
         except aiosqlite.Error as error:
             print(f"Ошибка при получении времени создания кода: {error}")

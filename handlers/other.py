@@ -8,9 +8,7 @@ async def id_cmd(message: types.Message) -> None:
 
 
 async def info_cmd(message: types.Message) -> None:
-    await message.reply(
-        "Бот-помощник для колледжей"
-    )
+    await message.reply("Бот-помощник для колледжей")
 
 
 def register_handlers_other(dp: Dispatcher) -> None:
@@ -20,4 +18,3 @@ def register_handlers_other(dp: Dispatcher) -> None:
     dp.register_message_handler(
         info_cmd, Text(startswith=["🆘инфо", "/info"], ignore_case=True)
     )
-
