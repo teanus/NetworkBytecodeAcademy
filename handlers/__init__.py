@@ -1,1 +1,1 @@
-from handlers import admin, student, other
+from handlers import admin, student, common, other

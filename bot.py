@@ -2,7 +2,7 @@ from aiogram.utils import executor
 
 
 from create_bot import dp
-from handlers import admin, student, other
+from handlers import admin, student, other, common
 
 
 async def on_startup(_) -> None:
@@ -14,9 +14,8 @@ async def on_shutdown(_) -> None:
 
 
 admin.register_handlers_admin(dp)
-student.register_handlers_client(dp)
 other.register_handlers_other(dp)
-
+common.register_handlers_common(dp)
 
 if __name__ == "__main__":
     executor.start_polling(
