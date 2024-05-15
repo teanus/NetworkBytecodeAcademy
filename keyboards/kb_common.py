@@ -11,7 +11,7 @@ for button_text in listKb:
 
 button_id = KeyboardButton("🆔айди")
 button_info = KeyboardButton("🆘инфо")
-button_support = KeyboardButton("🆘поддержка")
+button_support = KeyboardButton("🆘Регистрация")
 
 main_menu = ReplyKeyboardMarkup(resize_keyboard=True).add(
     button_id, button_info, button_support

@@ -1,14 +1,15 @@
+import asyncio
 import os
-import smtplib
 
+from aiosmtplib import SMTP, SMTPException
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
-def send_email(receiver, theme, text, encode="utf-8"):
+async def send_email(receiver, theme, text, encode="utf-8"):
     """
-    Отправка электронного письма (email)
+    Асинхронная отправка электронного письма (email)
     """
 
     mail_login = os.getenv("mail_login")
@@ -33,15 +34,13 @@ def send_email(receiver, theme, text, encode="utf-8"):
 
     try:
         # подключаемся к почтовому сервису
-        smtp = smtplib.SMTP(server, port)
-        smtp.starttls()
-        smtp.ehlo()
-        # логинимся на почтовом сервере
-        smtp.login(mail_login, password)
+        smtp = SMTP(hostname=server, port=port)
+        await smtp.connect()
+        await smtp.login(mail_login, password)
         # пробуем послать письмо
-        smtp.sendmail(mail_login, receiver, body.encode(encode))
-    except smtplib.SMTPException as err:
-        print("Что - то пошло не так...")
+        await smtp.sendmail(mail_login, receiver, body.encode(encode))
+    except SMTPException as err:
+        print("Что-то пошло не так...")
         raise err
     finally:
-        smtp.quit()
+        await smtp.quit()

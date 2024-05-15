@@ -1,209 +1,161 @@
-import time
-from os import getenv
+import asyncio
 
 import aiosqlite
-import asyncpg
-from dotenv import load_dotenv
-
-from resources import config
-
-load_dotenv()
+import pandas as pd
+from openpyxl import load_workbook
 
 
-class SqliteDatabase:
-    def __init__(self):
-        self.con = None
-        self.cur = None
+class ScheduleDB:
+    def __init__(self, db_path="schedule.db"):
+        self.db_path = db_path
 
-    async def connect(self) -> None:
-        try:
-            self.con = await aiosqlite.connect(config.sqlite()["name"])
-            self.cur = await self.con.cursor()
-            if self.con:
-                print("SQLite подключился")
-            table_save_code = (
-                "CREATE TABLE IF NOT EXISTS registration_codes(id INTEGER PRIMARY KEY,email TEXT, "
-                "code TEXT, timestamp REAL) "
+    async def create_tables(self):
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS Groups (
+                    group_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    group_name VARCHAR(50)
+                );
+            """
             )
-            await self.execute_query(table_save_code)
-
-            await self.con.commit()
-        except aiosqlite.Error as error:
-            print(f"Ошибка при подключении к базе данных SQLite: {error}")
-
-    async def disconnect(self) -> None:
-        if self.con:
-            await self.con.close()
-
-    async def execute_query(self, query: str, params=None) -> bool:
-        try:
-            if not self.con:
-                await self.connect()
-            if params:
-                async with self.con.execute(query, params):
-                    pass
-            else:
-                async with self.con.execute(query):
-                    pass
-            await self.con.commit()
-            return True
-        except aiosqlite.Error as error:
-            print(f"Ошибка при выполнении запроса SQLite: {error}")
-            return False
-
-    async def fetch_one(self, query: str, params=None):
-        try:
-            if not self.con:
-                await self.connect()
-            if params:
-                await self.cur.execute(query, params)
-            else:
-                await self.cur.execute(query)
-            row = await self.cur.fetchone()
-            return row
-        except aiosqlite.Error as error:
-            print(f"Ошибка при выполнении запроса SQLite: {error}")
-            return None
-
-    async def fetch_all(self, query: str, params=None) -> list:
-        try:
-            if not self.con:
-                await self.connect()
-            if params:
-                async with self.con.execute(query, params) as cur:
-                    result = await cur.fetchall()
-            else:
-                async with self.con.execute(query) as cur:
-                    result = await cur.fetchall()
-            return result
-        except aiosqlite.Error as error:
-            print(f"Ошибка при выполнении запроса SQLite: {error}")
-            return []
-
-    async def save_code(self, email, code):
-        try:
-            await self.execute_query(
-                "INSERT OR REPLACE INTO registration_codes (email, code, timestamp) VALUES (?, ?, ?)",
-                (email, code, time.time()),
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS Schedule (
+                    schedule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    group_id INT,
+                    day_of_week VARCHAR(20),
+                    FOREIGN KEY (group_id) REFERENCES Groups(group_id)
+                );
+            """
             )
-        except aiosqlite.Error as error:
-            print(f"Ошибка при сохранении кода: {error}")
-
-    async def get_code(self, email):
-        try:
-            row = await self.fetch_one(
-                "SELECT code FROM registration_codes WHERE email = ?", (email,)
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS Subjects (
+                    subject_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    schedule_id INT,
+                    subject_name VARCHAR(100),
+                    start_time TIME,
+                    end_time TIME,
+                    location VARCHAR(100),
+                    FOREIGN KEY (schedule_id) REFERENCES Schedule(schedule_id)
+                );
+            """
             )
-            return row[0] if row else None
-        except aiosqlite.Error as error:
-            print(f"Ошибка при получении кода: {error}")
-            return None
+            await db.commit()
 
-    async def get_code_timestamp(self, email):
-        try:
-            row = await self.fetch_one(
-                "SELECT timestamp FROM registration_codes WHERE email = ?", (email,)
+    async def get_group(self, group_name):
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "SELECT group_id FROM Groups WHERE group_name = ?", (group_name,)
             )
-            return row[0] if row else None
-        except aiosqlite.Error as error:
-            print(f"Ошибка при получении времени создания кода: {error}")
+            group = await cursor.fetchone()
+            return group[0] if group else None
 
-
-class PostgresqlDatabase:
-    def __init__(self):
-        self.con = None
-        self.cur = None
-
-    async def connect(self) -> None:
-        try:
-            self.con = await asyncpg.connect(
-                user=getenv("postgre_username"),
-                password=getenv("postgre_password"),
-                database=config.postgresql()["name"],
-                host=getenv("postgre_host"),
-                port=getenv("postgre_port"),
+    async def create_group(self, group_name):
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "INSERT INTO Groups (group_name) VALUES (?)", (group_name,)
             )
-            self.cur = await self.con.cursor()
-            if self.con:
-                print("PostgreSQL: подключился")
-            table_users = (
-                "CREATE TABLE IF NOT EXISTS users(id SERIAL PRIMARY KEY, telegram_id TEXT, role TEXT "
-                "DEFAULT normal "
+            await db.commit()
+            return cursor.lastrowid
+
+    async def get_schedule(self, group_id, day_of_week):
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "SELECT schedule_id FROM Schedule WHERE group_id = ? AND day_of_week = ?",
+                (
+                    group_id,
+                    day_of_week,
+                ),
             )
-            table_black_list = "CREATE TABLE IF NOT EXISTS black_list(command TEXT)"
-            await self.execute_query(table_users)
-            await self.execute_query(table_black_list)
-            await self.con.commit()
-        except asyncpg as error:
-            print(f"Ошибка при подключении к базе данных PostgreSQL: {error}")
+            schedule = await cursor.fetchall()
+            return [row[0] for row in schedule] if schedule else None
 
-    async def disconnect(self) -> None:
-        if self.con:
-            await self.con.close()
-
-    async def execute_query(self, query: str, params=None) -> bool:
-        try:
-            if not self.con:
-                await self.connect()
-            if params:
-                await self.cur.execute(query, params)
-            else:
-                await self.cur.execute(query)
-            await self.con.commit()
-            return True
-        except asyncpg as error:
-            print(f"Ошибка при выполнении запроса PostgreSQL: {error}")
-            return False
-
-    async def fetch_all(self, query: str, params=None) -> list:
-        try:
-            if not self.con:
-                await self.connect()
-            if params:
-                await self.cur.execute(query, params)
-            else:
-                await self.cur.execute(query)
-            return await self.cur.fetchall()
-        except asyncpg as error:
-            print(f"Ошибка при выполнении запроса PostgreSQL: {error}")
-            return []
-
-    async def save_code(self, email, code) -> None:
-        pass
-
-    async def get_code(self, email) -> str | None:
-        pass
-
-    async def get_code_timestamp(self, email) -> str | None:
-        pass
-
-
-class DataBase:
-    def __init__(self, db_type: str):
-        self.db_type = db_type.lower()
-        if self.db_type == "sqlite":
-            self.database = SqliteDatabase()
-        elif self.db_type == "postgresql":
-            self.database = PostgresqlDatabase()
-        else:
-            raise ValueError(
-                f"{db_type} - неподдерживаемый тип базы данных.\nИспользуйте PostgreSQL или SQLite"
+    async def create_schedule(self, group_id, day_of_week):
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "INSERT INTO Schedule (group_id, day_of_week) VALUES (?, ?)",
+                (group_id, day_of_week),
             )
+            await db.commit()
+            return cursor.lastrowid
 
-    async def connect(self) -> None:
-        await self.database.connect()
+    async def add_subject(
+        self, schedule_id, subject_name, start_time, end_time, location
+    ):
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                """
+                    INSERT INTO Subjects (schedule_id, subject_name, start_time, end_time, location) 
+                    VALUES (?, ?, ?, ?, ?)
+                """,
+                (schedule_id, subject_name, start_time, end_time, location),
+            )
+            await db.commit()
+            return cursor.lastrowid
 
-    async def disconnect(self) -> None:
-        await self.database.disconnect()
+    async def get_weekly_schedule_by_group(self, group_name):
+        group_id = await self.get_group(group_name)
+        days_of_week = [
+            "Понедельник",
+            "Вторник",
+            "Среда",
+            "Четверг",
+            "Пятница",
+            "Суббота",
+        ]
+        weekly_schedule = {}
+        for day in days_of_week:
+            schedule_ids = await self.get_schedule(group_id, day)
+            if schedule_ids is not None:
+                for schedule_id in schedule_ids:
+                    async with aiosqlite.connect(self.db_path) as db:
+                        cursor = await db.execute(
+                            """
+                            SELECT subject_name, start_time, end_time, location
+                            FROM Subjects
+                            WHERE schedule_id = ?
+                            """,
+                            (schedule_id,),
+                        )
+                        schedule = await cursor.fetchall()
+                        if day not in weekly_schedule:
+                            weekly_schedule[day] = []
+                        weekly_schedule[day].extend(schedule)
+        return weekly_schedule
 
-    async def save_code(self, email, code) -> None:
-        await self.database.save_code(email, code)
+    async def insert_data_from_excel(self, excel_path):
+        await self.create_tables()
+        wb = load_workbook(filename=excel_path)
+        for sheet in wb.sheetnames:
+            group_name = sheet
+            df = pd.read_excel(excel_path, sheet_name=sheet)
+            print(df.head())
+            async with aiosqlite.connect(self.db_path) as db:
+                cursor = await db.cursor()
+                await cursor.execute(
+                    "INSERT INTO Groups (group_name) VALUES (?)", (group_name,)
+                )
+                group_id = cursor.lastrowid
+                for index, row in df.iterrows():
+                    day_of_week = row["day_of_week"]
+                    await cursor.execute(
+                        "INSERT INTO Schedule (group_id, day_of_week) VALUES (?, ?)",
+                        (group_id, day_of_week),
+                    )
+                    schedule_id = cursor.lastrowid
+                    start_time = row["start_time"]
+                    end_time = row["end_time"]
+                    location = row["location"]
+                    subject_name = row["subject_name"]
+                    await cursor.execute(
+                        "INSERT INTO Subjects (schedule_id, subject_name, start_time, end_time, location) VALUES (?, "
+                        "?, ?, ?, ?)",
+                        (schedule_id, subject_name, start_time, end_time, location),
+                    )
+                await db.commit()
 
-    async def get_code(self, email) -> None:
-        await self.database.get_code(email)
 
-    async def get_code_timestamp(self, email) -> None:
-        await self.database.get_code_timestamp(email)
-
-
-db = DataBase(db_type=config.database()["type"])
+db = ScheduleDB()
+print(asyncio.run(db.get_weekly_schedule_by_group("PO215")))

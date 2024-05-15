@@ -20,7 +20,7 @@ class SqliteSaveCode:
             )
 
             await self.execute_query(table_save_code)
-
+            await self.clear_old_data()
         except aiosqlite.Error as error:
             print(f"Ошибка при подключении к базе данных SQLite: {error}")
 
@@ -39,6 +39,15 @@ class SqliteSaveCode:
             await self.connection.commit()
         except aiosqlite.Error as error:
             print(f"Ошибка при выполнении запроса SQLite: {error}")
+
+    async def clear_old_data(self):
+        try:
+            await self.execute_query(
+                "DELETE FROM registration_codes WHERE ? - timestamp > 180",
+                (time.time(),),
+            )
+        except aiosqlite.Error as error:
+            print(f"Ошибка при удалении старых данных: {error}")
 
     async def fetch_all(self, query: str, params=None):
         try:
@@ -79,10 +88,14 @@ class SqliteSaveCode:
 
     async def get_code(self, email):
         try:
-            row = await self.fetch_one(
-                "SELECT code FROM registration_codes WHERE email = ?", (email,)
-            )
-            return row[0] if row else None
+
+            async def get_code(self, email):
+                rows = await self.fetch_all(
+                    "SELECT code, timestamp FROM registration_codes WHERE email = ?",
+                    (email,),
+                )
+                return rows  # Возвращаем результат запроса
+
         except aiosqlite.Error as error:
             print(f"Ошибка при получении кода: {error}")
             return None
