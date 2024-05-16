@@ -1,1 +1,1 @@
-from provider.save_code_reg import db
+from provider.database import db
