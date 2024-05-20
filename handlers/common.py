@@ -3,7 +3,8 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
-from keyboards import kb_common, kb_other
+import super_admin
+from keyboards import kb_common, kb_other, kb_admin
 from provider import db
 
 
@@ -58,7 +59,12 @@ async def cancel_to_group(message: types.Message, state: FSMContext) -> None:
         message (types.Message): Сообщение от пользователя.
         state (FSMContext): Состояние Finite State Machine (FSM) контекста.
     """
-    await message.answer("Возвращаемся назад!", reply_markup=kb_other.main_menu)
+    if message.from_user.id in super_admin.admins:
+        menu = kb_admin.main_menu
+    else:
+        menu = kb_other.main_menu
+
+    await message.answer("Возвращаемся назад!", reply_markup=menu)
     await state.finish()
 
 
