@@ -1,28 +1,80 @@
 from aiogram import Dispatcher, types
+from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
-from keyboards import kb_common
+from keyboards import kb_common, kb_other
 from provider import db
 
 
 class CommonState(StatesGroup):
-    hello_reg = State()  # состояние, где приветствуют при регистрации
-    input_email = State()  # состояние, где вводят логин
-    input_code = State()  # состояние, где вводят код
+    """
+    Класс для хранения состояний пользователя.
+    """
+    get_group_schedule = State()
 
 
-async def start(message: types.Message):
-    await message.reply(
-        "Привет друг! Введи /info для отображения информации о боте или зарегистрируйся",
-        reply_markup=kb_common.main_menu,
+async def get_group(message: types.Message) -> None:
+    """
+    Обработчик команды для запроса группы.
+
+    Запрашивает у пользователя ввести название группы, расписание которой он хочет узнать.
+
+    Args:
+        message (types.Message): Сообщение от пользователя.
+    """
+    await message.answer(
+        "Введите группу расписание которой хотите узнать",
+        reply_markup=kb_common.back_menu,
     )
+    await CommonState.get_group_schedule.set()
 
 
-async def get_subject(message: types.Message):
-    await message.reply(await db.get_weekly_schedule_by_group("PO214"))
+async def send_subject(message: types.Message, state: FSMContext) -> None:
+    """
+    Обработчик команды для отправки расписания группы.
+
+    Получает расписание группы из базы данных и отправляет его пользователю.
+
+    Args:
+        message (types.Message): Сообщение от пользователя.
+        state (FSMContext): Состояние Finite State Machine (FSM) контекста.
+    """
+    await message.answer(
+        await db.get_weekly_schedule_by_group(message.text.lower()),
+        parse_mode="Markdown",
+        reply_markup=kb_other.main_menu,
+    )
+    await state.finish()
 
 
-def register_handlers_common(dp: Dispatcher):
-    dp.register_message_handler(get_subject, Text("расписание"))
-    dp.register_message_handler(start)
+async def cancel_to_group(message: types.Message, state: FSMContext) -> None:
+    """
+    Обработчик команды для отмены запроса группы.
+
+    Возвращает пользователя назад в главное меню и завершает состояние запроса группы.
+
+    Args:
+        message (types.Message): Сообщение от пользователя.
+        state (FSMContext): Состояние Finite State Machine (FSM) контекста.
+    """
+    await message.answer("Возвращаемся назад!", reply_markup=kb_other.main_menu)
+    await state.finish()
+
+
+def register_handlers_common(dp: Dispatcher) -> None:
+    """
+    Регистрирует обработчики команд для общих запросов.
+
+    Args:
+        dp (Dispatcher): Диспетчер aiogram для регистрации обработчиков.
+    """
+    dp.register_message_handler(
+        get_group, Text(["📅Расписание", "Расписание", "schedule"], ignore_case=True)
+    )
+    dp.register_message_handler(
+        cancel_to_group,
+        Text(["◀отмена", "отмена", "cancel", "back"], ignore_case=True),
+        state=CommonState.get_group_schedule,
+    )
+    dp.register_message_handler(send_subject, state=CommonState.get_group_schedule)

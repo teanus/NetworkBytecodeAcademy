@@ -1,8 +1,3 @@
-database:
-  type: 'sqlite' # Выбери провайдера (postgresql или sqlite)
 
-postgresql:
-  name: 'teanus_rcon_bot'
-
-sqlite:
-  name: 'sqlite_db.db'
+super_admin_add:
+  function : 'on'
