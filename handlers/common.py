@@ -44,9 +44,7 @@ async def send_subject(message: types.Message, state: FSMContext) -> None:
     await message.answer(
         await db.get_weekly_schedule_by_group(message.text.lower()),
         parse_mode="Markdown",
-        reply_markup=await get_main_menu(message.from_user.id),
     )
-    await state.finish()
 
 
 async def cancel_to_group(message: types.Message, state: FSMContext) -> None:
