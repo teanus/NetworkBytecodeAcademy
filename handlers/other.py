@@ -2,7 +2,7 @@ from aiogram import Dispatcher, types
 from aiogram.dispatcher.filters import Text
 
 from admin_code import ADMIN_CODE
-from keyboards import kb_admin, kb_other
+from keyboards import get_main_menu
 from super_admin import add_admin, get_admin, get_state
 
 
@@ -17,16 +17,14 @@ async def start(message: types.Message) -> None:
     Args:
         message (types.Message): Сообщение от пользователя.
     """
-    if await get_admin(message.from_user.id):
-        await message.answer(
-            'Ты администратор! Нажми на кнопку "управление" и измени расписание',
-            reply_markup=kb_admin.main_menu,
-        )
-    else:
-        await message.reply(
-            "Привет друг! Введи /info для отображения информации о боте или зарегистрируйся",
-            reply_markup=kb_other.main_menu,
-        )
+    is_admin = await get_admin(message.from_user.id)
+    menu = await get_main_menu(message.from_user.id)
+    text = (
+        'Ты администратор! Нажми на кнопку "управление" и измени расписание'
+        if is_admin
+        else "Привет друг! Введи /info для отображения информации о боте или зарегистрируйся"
+    )
+    await message.answer(text, reply_markup=menu)
 
 
 async def code_admin(message: types.Message) -> None:

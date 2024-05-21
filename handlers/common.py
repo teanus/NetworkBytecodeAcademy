@@ -3,8 +3,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
-import super_admin
-from keyboards import kb_common, kb_other, kb_admin
+from keyboards import kb_common, get_main_menu
 from provider import db
 
 
@@ -12,6 +11,7 @@ class CommonState(StatesGroup):
     """
     Класс для хранения состояний пользователя.
     """
+
     get_group_schedule = State()
 
 
@@ -44,7 +44,7 @@ async def send_subject(message: types.Message, state: FSMContext) -> None:
     await message.answer(
         await db.get_weekly_schedule_by_group(message.text.lower()),
         parse_mode="Markdown",
-        reply_markup=kb_other.main_menu,
+        reply_markup=await get_main_menu(message.from_user.id),
     )
     await state.finish()
 
@@ -59,12 +59,9 @@ async def cancel_to_group(message: types.Message, state: FSMContext) -> None:
         message (types.Message): Сообщение от пользователя.
         state (FSMContext): Состояние Finite State Machine (FSM) контекста.
     """
-    if message.from_user.id in super_admin.admins:
-        menu = kb_admin.main_menu
-    else:
-        menu = kb_other.main_menu
-
-    await message.answer("Возвращаемся назад!", reply_markup=menu)
+    await message.answer(
+        "Возвращаемся назад!", reply_markup=await get_main_menu(message.from_user.id)
+    )
     await state.finish()
 
 

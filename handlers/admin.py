@@ -13,6 +13,7 @@ class AdminState(StatesGroup):
     """
     Класс для хранения состояний администратора.
     """
+
     set_settings = State()
 
 
@@ -60,8 +61,8 @@ async def get_document(message: types.Message, state: FSMContext) -> None:
     """
     try:
         if (
-                message.document.mime_type
-                == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            message.document.mime_type
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         ):
             file_id = message.document.file_id
             file_info = await bot.get_file(file_id)
