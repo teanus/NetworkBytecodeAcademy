@@ -220,6 +220,8 @@ class ScheduleDB:
             str: Текстовое представление недельного расписания в виде таблицы.
         """
         group_id = await self.get_group(group_name)
+        if group_id is None:
+            return "Такой группы не существует, введите другую"
         days_of_week = [
             "Понедельник",
             "Вторник",
