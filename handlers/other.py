@@ -63,7 +63,7 @@ async def info_cmd(message: types.Message) -> None:
     Args:
         message (types.Message): Сообщение от пользователя.
     """
-    await message.reply("Бот-помощник для Network&Bytecode academy")
+    await message.reply("Бот-помощник для Network&Bytecode academy. ")
 
 
 def register_handlers_other(dp: Dispatcher) -> None:

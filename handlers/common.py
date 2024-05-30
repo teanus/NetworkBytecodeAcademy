@@ -2,6 +2,7 @@ from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
 from keyboards import kb_common, get_main_menu
 from provider import db
@@ -11,56 +12,62 @@ class CommonState(StatesGroup):
     """
     Класс для хранения состояний пользователя.
     """
-
     get_group_schedule = State()
 
 
+# 1
 async def get_group(message: types.Message) -> None:
     """
     Обработчик команды для запроса группы.
 
-    Запрашивает у пользователя ввести название группы, расписание которой он хочет узнать.
+    Отправляет инлайн-клавиатуру с кнопками для выбора группы.
 
     Args:
         message (types.Message): Сообщение от пользователя.
     """
+    group_buttons = await kb_common.create_group_inline_buttons()
+
     await message.answer(
-        "Введите группу расписание которой хотите узнать",
-        reply_markup=kb_common.back_menu,
+        "Выберите группу, расписание которой хотите узнать:",
+        reply_markup=group_buttons
     )
     await CommonState.get_group_schedule.set()
 
 
-async def send_subject(message: types.Message, state: FSMContext) -> None:
+async def group_schedule_callback_handler(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
-    Обработчик команды для отправки расписания группы.
+    Обработчик выбора группы из инлайн-кнопок для получения расписания.
 
     Получает расписание группы из базы данных и отправляет его пользователю.
 
     Args:
-        message (types.Message): Сообщение от пользователя.
+        callback_query (CallbackQuery): Объект колбека от инлайн-кнопки.
         state (FSMContext): Состояние Finite State Machine (FSM) контекста.
     """
-    await message.answer(
-        await db.get_weekly_schedule_by_group(message.text.lower()),
-        parse_mode="Markdown",
-    )
+    if await state.get_state() != CommonState.get_group_schedule.state:
+        await callback_query.answer("Действие отменено.")
+        return
 
+    group_name = callback_query.data
 
-async def cancel_to_group(message: types.Message, state: FSMContext) -> None:
-    """
-    Обработчик команды для отмены запроса группы.
+    # Если нажата кнопка "Отмена", то завершаем состояние и возвращаем пользователя в главное меню
+    if group_name == "назад":
+        await state.finish()
+        await callback_query.message.edit_reply_markup(reply_markup=None)
+        await callback_query.message.answer(
+            "Возвращаемся в меню", reply_markup=await get_main_menu(callback_query.from_user.id)
+        )
+        await callback_query.answer()
+        return
 
-    Возвращает пользователя назад в главное меню и завершает состояние запроса группы.
+    # Удаляем инлайн-клавиатуру
+    await callback_query.message.edit_reply_markup(reply_markup=None)
 
-    Args:
-        message (types.Message): Сообщение от пользователя.
-        state (FSMContext): Состояние Finite State Machine (FSM) контекста.
-    """
-    await message.answer(
-        "Возвращаемся назад!", reply_markup=await get_main_menu(message.from_user.id)
-    )
+    # Получаем расписание и отправляем его
+    schedule = await db.get_weekly_schedule_by_group(group_name.lower())
+    await callback_query.message.answer(schedule, parse_mode="Markdown")
     await state.finish()
+    await callback_query.answer()
 
 
 def register_handlers_common(dp: Dispatcher) -> None:
@@ -70,12 +77,8 @@ def register_handlers_common(dp: Dispatcher) -> None:
     Args:
         dp (Dispatcher): Диспетчер aiogram для регистрации обработчиков.
     """
+
     dp.register_message_handler(
         get_group, Text(["📅Расписание", "Расписание", "schedule"], ignore_case=True)
     )
-    dp.register_message_handler(
-        cancel_to_group,
-        Text(["◀отмена", "отмена", "cancel", "back"], ignore_case=True),
-        state=CommonState.get_group_schedule,
-    )
-    dp.register_message_handler(send_subject, state=CommonState.get_group_schedule)
+    dp.register_callback_query_handler(group_schedule_callback_handler, state=CommonState.get_group_schedule)

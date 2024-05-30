@@ -9,7 +9,7 @@ from aiohttp import ClientError
 from functools import wraps
 import super_admin
 from create_bot import bot
-from keyboards import kb_admin
+from keyboards import kb_admin, kb_common
 from provider import db
 from mail import send_email
 
@@ -38,6 +38,7 @@ def admin_required(handler: Callable[[types.Message, Any], Any]) -> Callable[[ty
     Returns:
         Callable[[types.Message, Any], Any]: Обёрнутая функция-обработчик.
     """
+
     @wraps(handler)
     async def wrapper(message: types.Message, *args: Any, **kwargs: Any) -> Any:
         if await super_admin.get_admin(message.from_user.id):
@@ -61,7 +62,7 @@ async def settings(message: types.Message) -> None:
     """
     await message.answer(
         "Пришли документ в формате excel (xlsx), для добавления данных",
-        reply_markup=kb_admin.back_menu,
+        reply_markup=kb_common.back_menu,
     )
     await AdminState.set_settings.set()
 
@@ -131,9 +132,17 @@ async def set_group_name(message: types.Message, state: FSMContext) -> None:
         message (types.Message): Сообщение от пользователя.
         state (FSMContext): Состояние Finite State Machine (FSM) контекста.
     """
-    group_buttons = await kb_admin.create_group_inline_buttons()
+    group_buttons = await kb_common.create_group_inline_buttons()
+    await message.answer("Ты вошел в систему отправки сообщений на почту", reply_markup=types.ReplyKeyboardRemove())
     await message.answer("Выбери группу:", reply_markup=group_buttons)
     await AdminState.get_group_name_to_email.set()
+
+
+async def back_to_main_menu(callback_query: CallbackQuery, state: FSMContext) -> None:
+    await callback_query.message.answer("Возвращение в главное меню.", reply_markup=kb_admin.main_menu)
+    await callback_query.message.edit_reply_markup(reply_markup=None)
+    await callback_query.answer()
+    await state.finish()
 
 
 async def group_name_callback_handler(callback_query: CallbackQuery, state: FSMContext) -> None:
@@ -149,7 +158,11 @@ async def group_name_callback_handler(callback_query: CallbackQuery, state: FSMC
     group_name = callback_query.data
     async with state.proxy() as data:
         data['group_name'] = group_name
-    await callback_query.message.answer("Пришли текст сообщения")
+    await callback_query.message.edit_reply_markup(reply_markup=None)
+    await callback_query.message.answer("Пришли текст сообщения", reply_markup=types.ReplyKeyboardMarkup(
+        keyboard=[
+            [types.KeyboardButton(text="Назад")]
+        ], resize_keyboard=True))
     await AdminState.get_message_to_email.set()
     await callback_query.answer()
 
@@ -166,15 +179,27 @@ async def get_text_message_to_email(message: types.Message, state: FSMContext) -
     """
     async with state.proxy() as data:
         group_name = data.get('group_name')
-    if group_name:
+    if message.text.lower() == "назад":
+        await back_to_group_selection(message, state)
+    elif group_name:
         emails = await db.get_emails_by_group(group_name)
         if emails:
-            await message.answer("Сообщения отправлены!")
+            await message.answer("Сообщения отправлены!", reply_markup=types.ReplyKeyboardRemove())
             await send_email(receivers=emails, text=message.text)
         else:
-            await message.answer("Не найдены адреса электронной почты для указанной группы.")
+            await message.answer("Не найдены адреса электронной почты для указанной группы.",
+                                 reply_markup=types.ReplyKeyboardRemove())
     else:
-        await message.answer("Не удалось получить название группы. Пожалуйста, отправьте название группы заново.")
+        await message.answer("Не удалось получить название группы. Пожалуйста, отправьте название группы заново.",
+                             reply_markup=types.ReplyKeyboardRemove())
+    await state.finish()
+
+
+async def back_to_group_selection(message: types.Message, state: FSMContext) -> None:
+    group_buttons = await kb_admin.create_group_inline_buttons()
+    await message.answer("Вернулись назад!", reply_markup=types.ReplyKeyboardRemove())
+    await message.answer("Выбери группу:", reply_markup=group_buttons)
+    await AdminState.get_group_name_to_email.set()
 
 
 def register_handlers_admin(dp: Dispatcher) -> None:
@@ -199,5 +224,13 @@ def register_handlers_admin(dp: Dispatcher) -> None:
         content_types=[types.ContentType.DOCUMENT],
     )
     dp.register_message_handler(set_group_name, Text(['📧Связаться', '📧Communication'], ignore_case=True))
+
+    dp.register_callback_query_handler(back_to_main_menu, lambda c: c.data == 'назад',
+                                       state=AdminState.get_group_name_to_email)
+
     dp.register_callback_query_handler(group_name_callback_handler, state=AdminState.get_group_name_to_email)
+
+    dp.register_message_handler(back_to_group_selection, Text("Назад", ignore_case=True),
+                                state=AdminState.get_message_to_email)
+
     dp.register_message_handler(get_text_message_to_email, state=AdminState.get_message_to_email)
