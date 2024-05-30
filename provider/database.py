@@ -22,15 +22,27 @@ class ExcelParser:
         """
         data = {}
         wb = load_workbook(filename=io.BytesIO(excel_bytes))
-        required_columns = ["day_of_week", "start_time", "end_time", "location", "subject_name", "email", "last_name",
-                            "first_name"]
+        required_columns = [
+            "day_of_week",
+            "start_time",
+            "end_time",
+            "location",
+            "subject_name",
+            "email",
+            "last_name",
+            "first_name",
+        ]
 
         for sheet in wb.sheetnames:
             df = pd.read_excel(io.BytesIO(excel_bytes), sheet_name=sheet)
             missing_columns = [col for col in required_columns if col not in df.columns]
             if missing_columns:
-                raise ValueError(f"Missing columns in sheet '{sheet}': {', '.join(missing_columns)}")
-            df["start_time"] = pd.to_datetime(df["start_time"], format="%H:%M:%S").dt.time
+                raise ValueError(
+                    f"Missing columns in sheet '{sheet}': {', '.join(missing_columns)}"
+                )
+            df["start_time"] = pd.to_datetime(
+                df["start_time"], format="%H:%M:%S"
+            ).dt.time
             df["end_time"] = pd.to_datetime(df["end_time"], format="%H:%M:%S").dt.time
             data[sheet] = df
         return data
@@ -160,7 +172,7 @@ class ScheduleDB:
         return [group[0] for group in groups]
 
     async def get_schedule(
-            self, group_id: int, day_of_week: str
+        self, group_id: int, day_of_week: str
     ) -> Union[List[int], None]:
         """
         Получение идентификаторов расписаний для определенной группы и дня недели.
@@ -203,12 +215,12 @@ class ScheduleDB:
         return last_row_id
 
     async def add_subject(
-            self,
-            schedule_id: int,
-            subject_name: str,
-            start_time: str,
-            end_time: str,
-            location: str,
+        self,
+        schedule_id: int,
+        subject_name: str,
+        start_time: str,
+        end_time: str,
+        location: str,
     ) -> int:
         """
         Добавление нового предмета в базу данных.
@@ -237,11 +249,11 @@ class ScheduleDB:
         return last_row_id
 
     async def add_email(
-            self,
-            group_id: int,
-            email: str,
-            last_name: str,
-            first_name: str,
+        self,
+        group_id: int,
+        email: str,
+        last_name: str,
+        first_name: str,
     ) -> int:
         """
         Добавление нового email в базу данных.
@@ -284,8 +296,7 @@ class ScheduleDB:
 
         conn = await self.connect_to_db()
         cursor = await conn.execute(
-            "SELECT email FROM Emails WHERE group_id = ?",
-            (group_id,)
+            "SELECT email FROM Emails WHERE group_id = ?", (group_id,)
         )
         emails = await cursor.fetchall()
         await conn.close()
@@ -374,7 +385,7 @@ class ScheduleDB:
                     INSERT INTO Emails (group_id, email, last_name, first_name) 
                     VALUES (?, ?, ?, ?)
                     """,
-                    (group_id, email, last_name, first_name)
+                    (group_id, email, last_name, first_name),
                 )
 
             for index, row in df.iterrows():
@@ -396,7 +407,7 @@ class ScheduleDB:
                     INSERT INTO Subjects (schedule_id, subject_name, start_time, end_time, location) 
                     VALUES (?, ?, ?, ?, ?)
                     """,
-                    (schedule_id, subject_name, start_time, end_time, location)
+                    (schedule_id, subject_name, start_time, end_time, location),
                 )
 
         await conn.commit()

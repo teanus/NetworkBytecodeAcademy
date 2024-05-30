@@ -2,9 +2,10 @@ from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import (CallbackQuery, InlineKeyboardButton,
+                           InlineKeyboardMarkup)
 
-from keyboards import kb_common, get_main_menu
+from keyboards import get_main_menu, kb_common
 from provider import db
 
 
@@ -12,6 +13,7 @@ class CommonState(StatesGroup):
     """
     Класс для хранения состояний пользователя.
     """
+
     get_group_schedule = State()
 
 
@@ -28,13 +30,14 @@ async def get_group(message: types.Message) -> None:
     group_buttons = await kb_common.create_group_inline_buttons()
 
     await message.answer(
-        "Выберите группу, расписание которой хотите узнать:",
-        reply_markup=group_buttons
+        "Выберите группу, расписание которой хотите узнать:", reply_markup=group_buttons
     )
     await CommonState.get_group_schedule.set()
 
 
-async def group_schedule_callback_handler(callback_query: CallbackQuery, state: FSMContext) -> None:
+async def group_schedule_callback_handler(
+    callback_query: CallbackQuery, state: FSMContext
+) -> None:
     """
     Обработчик выбора группы из инлайн-кнопок для получения расписания.
 
@@ -55,7 +58,8 @@ async def group_schedule_callback_handler(callback_query: CallbackQuery, state: 
         await state.finish()
         await callback_query.message.edit_reply_markup(reply_markup=None)
         await callback_query.message.answer(
-            "Возвращаемся в меню", reply_markup=await get_main_menu(callback_query.from_user.id)
+            "Возвращаемся в меню",
+            reply_markup=await get_main_menu(callback_query.from_user.id),
         )
         await callback_query.answer()
         return
@@ -81,4 +85,6 @@ def register_handlers_common(dp: Dispatcher) -> None:
     dp.register_message_handler(
         get_group, Text(["📅Расписание", "Расписание", "schedule"], ignore_case=True)
     )
-    dp.register_callback_query_handler(group_schedule_callback_handler, state=CommonState.get_group_schedule)
+    dp.register_callback_query_handler(
+        group_schedule_callback_handler, state=CommonState.get_group_schedule
+    )

@@ -9,4 +9,3 @@ button_communication = KeyboardButton("📧Связаться")
 main_menu = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2).add(
     button_id, button_schedule, button_info, button_admin_panel, button_communication
 )
-

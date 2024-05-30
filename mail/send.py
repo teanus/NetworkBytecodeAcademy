@@ -1,14 +1,20 @@
 import os
+from typing import List
+
 from aiosmtplib import SMTP, SMTPException
 from dotenv import load_dotenv
-from typing import List
+
 from mail.validate import validate_email
 
 load_dotenv()
 
 
-async def send_email(receivers: List[str], theme: str = "Уведомление от NBA", text: str = "МЫУ",
-                     encode: str = "utf-8") -> None:
+async def send_email(
+    receivers: List[str],
+    theme: str = "Уведомление от NBA",
+    text: str = "МЫУ",
+    encode: str = "utf-8",
+) -> None:
     """
     Асинхронная отправка электронного письма (email).
 
