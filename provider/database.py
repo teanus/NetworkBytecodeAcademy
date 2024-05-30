@@ -6,6 +6,8 @@ import pandas as pd
 import prettytable as pt
 from aiosqlite import Connection
 from openpyxl import load_workbook
+from resources import config
+import resources.config
 
 
 class ExcelParser:
@@ -57,7 +59,7 @@ class ScheduleDB:
         Returns:
             Connection: Объект соединения с базой данных.
         """
-        return await aiosqlite.connect("schedule.db")
+        return await aiosqlite.connect(config.get_name_db())
 
     async def create_tables(self) -> None:
         """

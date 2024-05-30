@@ -26,3 +26,13 @@ def super_admin_add() -> Dict[str, Any]:
         Dict[str, Any]: Словарь с настройками супер-администратора.
     """
     return read_yaml()["super_admin_add"]
+
+
+def get_name_db() -> str:
+    """
+    Получает название базы данных SQLite3
+
+    Returns:
+        str: Строку с названием базы данных
+    """
+    return read_yaml()["db_name"]
