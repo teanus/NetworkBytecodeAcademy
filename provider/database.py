@@ -38,7 +38,7 @@ class ExcelParser:
             missing_columns = [col for col in required_columns if col not in df.columns]
             if missing_columns:
                 raise ValueError(
-                    f"Missing columns in sheet '{sheet}': {', '.join(missing_columns)}"
+                    f"Отсутствует столбец  '{sheet}': {', '.join(missing_columns)}"
                 )
             df["start_time"] = pd.to_datetime(
                 df["start_time"], format="%H:%M:%S"

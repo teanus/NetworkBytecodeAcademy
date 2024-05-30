@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Any, Dict
+
 import yaml
 
 # Определение пути к файлу конфигурации config.yaml

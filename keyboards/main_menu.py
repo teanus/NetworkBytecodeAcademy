@@ -1,6 +1,7 @@
-import super_admin
-from keyboards import kb_other, kb_admin
 from aiogram import types
+
+import super_admin
+from keyboards import kb_admin, kb_other
 
 
 async def get_main_menu(user_id: int) -> types.ReplyKeyboardMarkup:
