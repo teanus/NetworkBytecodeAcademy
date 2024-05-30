@@ -1,3 +1,5 @@
+from typing import Any, Callable
+
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
@@ -21,9 +23,23 @@ class AdminState(StatesGroup):
     get_message_to_email = State()
 
 
-def admin_required(handler):
+def admin_required(handler: Callable[[types.Message, Any], Any]) -> Callable[[types.Message, Any], Any]:
+    """
+    Декоратор для проверки прав администратора.
+
+    Этот декоратор проверяет, является ли пользователь администратором,
+    перед выполнением обработчика. Если пользователь не администратор,
+    возвращается сообщение о недостатке прав.
+
+    Args:
+        handler (Callable[[types.Message, Any], Any]): Функция-обработчик, которая будет выполняться,
+                                                       если пользователь администратор.
+
+    Returns:
+        Callable[[types.Message, Any], Any]: Обёрнутая функция-обработчик.
+    """
     @wraps(handler)
-    async def wrapper(message: types.Message, *args, **kwargs):
+    async def wrapper(message: types.Message, *args: Any, **kwargs: Any) -> Any:
         if await super_admin.get_admin(message.from_user.id):
             return await handler(message, *args, **kwargs)
         else:
