@@ -15,7 +15,7 @@ def generate_random_code() -> str:
     """
     random_number = os.urandom(16)  # Генерируем 16 байтов случайных данных
     random_hash = hashlib.sha256(random_number).hexdigest()  # Создаем SHA-256 хэш
-    return random_hash[:16]  # Возвращаем первые 16 символов хэша
+    return random_hash[:16]  # Возвращаем первые 16 символов хеша
 
 
 # Код администратора, используемый для аутентификации

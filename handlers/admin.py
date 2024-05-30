@@ -126,7 +126,7 @@ async def get_document(message: types.Message, state: FSMContext) -> None:
 
 
 @admin_required
-async def set_group_name(message: types.Message, state: FSMContext) -> None:
+async def set_group_name(message: types.Message) -> None:
     """
     Обработчик команды для выбора группы.
 
@@ -134,7 +134,6 @@ async def set_group_name(message: types.Message, state: FSMContext) -> None:
 
     Args:
         message (types.Message): Сообщение от пользователя.
-        state (FSMContext): Состояние Finite State Machine (FSM) контекста.
     """
     group_buttons = await kb_common.create_group_inline_buttons()
     await message.answer(
@@ -193,7 +192,7 @@ async def get_text_message_to_email(message: types.Message, state: FSMContext) -
     async with state.proxy() as data:
         group_name = data.get("group_name")
     if message.text.lower() == "назад":
-        await back_to_group_selection(message, state)
+        await back_to_group_selection(message)
     elif group_name:
         emails = await db.get_emails_by_group(group_name)
         if emails:
@@ -214,8 +213,8 @@ async def get_text_message_to_email(message: types.Message, state: FSMContext) -
     await state.finish()
 
 
-async def back_to_group_selection(message: types.Message, state: FSMContext) -> None:
-    group_buttons = await kb_admin.create_group_inline_buttons()
+async def back_to_group_selection(message: types.Message) -> None:
+    group_buttons = await kb_common.create_group_inline_buttons()
     await message.answer("Вернулись назад!", reply_markup=types.ReplyKeyboardRemove())
     await message.answer("Выбери группу:", reply_markup=group_buttons)
     await AdminState.get_group_name_to_email.set()
