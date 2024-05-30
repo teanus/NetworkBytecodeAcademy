@@ -2,6 +2,7 @@ import os
 from aiosmtplib import SMTP, SMTPException
 from dotenv import load_dotenv
 from typing import List
+Вfrom mail.validate import validate_email
 
 load_dotenv()
 
@@ -39,7 +40,7 @@ async def send_email(receivers: List[str], theme: str = "Уведомление 
             text,
         )
     )
-
+    smtp = None
     try:
         # Подключаемся к почтовому сервису
         smtp = SMTP(hostname=server, port=port)
@@ -47,12 +48,15 @@ async def send_email(receivers: List[str], theme: str = "Уведомление 
         await smtp.login(mail_login, password)
 
         for receiver in receivers:
-            # Формируем заголовок для каждого адресата
-            receiver_header = f"To: {receiver}"
-            full_body = "\r\n".join((receiver_header, body))
+            if not await validate_email(receiver):
+                continue
+            else:
+                # Формируем заголовок для каждого адресата
+                receiver_header = f"To: {receiver}"
+                full_body = "\r\n".join((receiver_header, body))
 
-            # Пробуем послать письмо
-            await smtp.sendmail(mail_login, receiver, full_body.encode(encode))
+                # Пробуем послать письмо
+                await smtp.sendmail(mail_login, receiver, full_body.encode(encode))
     except SMTPException as err:
         print("Что-то пошло не так...")
         raise err
