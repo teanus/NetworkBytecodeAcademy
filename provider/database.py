@@ -22,11 +22,15 @@ class ExcelParser:
         """
         data = {}
         wb = load_workbook(filename=io.BytesIO(excel_bytes))
+        required_columns = ["day_of_week", "start_time", "end_time", "location", "subject_name", "email", "last_name",
+                            "first_name"]
+
         for sheet in wb.sheetnames:
             df = pd.read_excel(io.BytesIO(excel_bytes), sheet_name=sheet)
-            df["start_time"] = pd.to_datetime(
-                df["start_time"], format="%H:%M:%S"
-            ).dt.time
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                raise ValueError(f"Missing columns in sheet '{sheet}': {', '.join(missing_columns)}")
+            df["start_time"] = pd.to_datetime(df["start_time"], format="%H:%M:%S").dt.time
             df["end_time"] = pd.to_datetime(df["end_time"], format="%H:%M:%S").dt.time
             data[sheet] = df
         return data
@@ -54,7 +58,7 @@ class ScheduleDB:
                 group_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 group_name VARCHAR(50)
             );
-        """
+            """
         )
         await conn.execute(
             """
@@ -64,7 +68,7 @@ class ScheduleDB:
                 day_of_week VARCHAR(20),
                 FOREIGN KEY (group_id) REFERENCES Groups(group_id)
             );
-        """
+            """
         )
         await conn.execute(
             """
@@ -77,7 +81,19 @@ class ScheduleDB:
                 location VARCHAR(100),
                 FOREIGN KEY (schedule_id) REFERENCES Schedule(schedule_id)
             );
-        """
+            """
+        )
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS Emails (
+                email_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                group_id INT,
+                email VARCHAR(100),
+                last_name VARCHAR(100),
+                first_name VARCHAR(100),
+                FOREIGN KEY (group_id) REFERENCES Groups(group_id)
+            );
+            """
         )
         await conn.commit()
         await conn.close()
@@ -91,6 +107,7 @@ class ScheduleDB:
         await conn.execute("DROP TABLE IF EXISTS Subjects")
         await conn.execute("DROP TABLE IF EXISTS Schedule")
         await conn.execute("DROP TABLE IF EXISTS Groups")
+        await conn.execute("DROP TABLE IF EXISTS Emails")
         await conn.commit()
         await conn.close()
 
@@ -132,8 +149,18 @@ class ScheduleDB:
         await conn.close()
         return last_row_id
 
+    async def get_all_groups(self) -> List[str]:
+        """
+        Получение всех групп из базы данных.
+        """
+        conn = await self.connect_to_db()
+        cursor = await conn.execute("SELECT group_name FROM Groups")
+        groups = await cursor.fetchall()
+        await conn.close()
+        return [group[0] for group in groups]
+
     async def get_schedule(
-        self, group_id: int, day_of_week: str
+            self, group_id: int, day_of_week: str
     ) -> Union[List[int], None]:
         """
         Получение идентификаторов расписаний для определенной группы и дня недели.
@@ -176,12 +203,12 @@ class ScheduleDB:
         return last_row_id
 
     async def add_subject(
-        self,
-        schedule_id: int,
-        subject_name: str,
-        start_time: str,
-        end_time: str,
-        location: str,
+            self,
+            schedule_id: int,
+            subject_name: str,
+            start_time: str,
+            end_time: str,
+            location: str,
     ) -> int:
         """
         Добавление нового предмета в базу данных.
@@ -208,6 +235,61 @@ class ScheduleDB:
         last_row_id = cursor.lastrowid
         await conn.close()
         return last_row_id
+
+    async def add_email(
+            self,
+            group_id: int,
+            email: str,
+            last_name: str,
+            first_name: str,
+    ) -> int:
+        """
+        Добавление нового email в базу данных.
+
+        Args:
+            group_id (int): Идентификатор группы.
+            email (str): Email адрес.
+            last_name (str): Фамилия.
+            first_name (str): Имя.
+
+        Returns:
+            int: Идентификатор нового email.
+        """
+        conn = await self.connect_to_db()
+        cursor = await conn.execute(
+            """
+                INSERT INTO Emails (group_id, email, last_name, first_name) 
+                VALUES (?, ?, ?, ?)
+            """,
+            (group_id, email, last_name, first_name),
+        )
+        await conn.commit()
+        last_row_id = cursor.lastrowid
+        await conn.close()
+        return last_row_id
+
+    async def get_emails_by_group(self, group_name: str) -> Union[List[str], None]:
+        """
+        Получение email адресов по названию группы.
+
+        Args:
+            group_name (str): Название группы.
+
+        Returns:
+            Union[List[str], None]: Список email адресов или None, если email не найдены.
+        """
+        group_id = await self.get_group(group_name)
+        if group_id is None:
+            return None
+
+        conn = await self.connect_to_db()
+        cursor = await conn.execute(
+            "SELECT email FROM Emails WHERE group_id = ?",
+            (group_id,)
+        )
+        emails = await cursor.fetchall()
+        await conn.close()
+        return [row[0] for row in emails] if emails else None
 
     async def get_weekly_schedule_by_group(self, group_name: str) -> str:
         """
@@ -275,27 +357,48 @@ class ScheduleDB:
         await self.create_tables()
         data = ExcelParser.parse_excel(excel_bytes)
         conn = await self.connect_to_db()
+
         for group_name, df in data.items():
             cursor = await conn.execute(
                 "INSERT INTO Groups (group_name) VALUES (?)", (group_name,)
             )
             group_id = cursor.lastrowid
+
+            # Вставка данных в таблицу Emails
+            for _, row in df.iterrows():
+                email = row["email"]
+                last_name = row["last_name"]
+                first_name = row["first_name"]
+                await conn.execute(
+                    """
+                    INSERT INTO Emails (group_id, email, last_name, first_name) 
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (group_id, email, last_name, first_name)
+                )
+
             for index, row in df.iterrows():
+                # Вставка данных в таблицу Schedule
                 day_of_week = row["day_of_week"]
                 cursor = await conn.execute(
                     "INSERT INTO Schedule (group_id, day_of_week) VALUES (?, ?)",
                     (group_id, day_of_week),
                 )
                 schedule_id = cursor.lastrowid
+
+                # Вставка данных в таблицу Subjects
                 start_time = row["start_time"].strftime("%H:%M:%S")
                 end_time = row["end_time"].strftime("%H:%M:%S")
                 location = row["location"]
                 subject_name = row["subject_name"]
                 await conn.execute(
-                    "INSERT INTO Subjects (schedule_id, subject_name, start_time, end_time, location) VALUES (?, ?, "
-                    "?, ?, ?)",
-                    (schedule_id, subject_name, start_time, end_time, location),
+                    """
+                    INSERT INTO Subjects (schedule_id, subject_name, start_time, end_time, location) 
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (schedule_id, subject_name, start_time, end_time, location)
                 )
+
         await conn.commit()
         await conn.close()
 

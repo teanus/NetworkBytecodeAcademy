@@ -1,15 +1,24 @@
-import asyncio
 import os
-
 from aiosmtplib import SMTP, SMTPException
 from dotenv import load_dotenv
+from typing import List
 
 load_dotenv()
 
 
-async def send_email(receiver, theme, text, encode="utf-8"):
+async def send_email(receivers: List[str], theme: str = "Уведомление от NBA", text: str = "МЫУ",
+                     encode: str = "utf-8") -> None:
     """
-    Асинхронная отправка электронного письма (email)
+    Асинхронная отправка электронного письма (email).
+
+    Args:
+        receivers (List[str]): Список адресатов.
+        theme (str): Тема письма. По умолчанию "Уведомление от NBA".
+        text (str): Текст письма. По умолчанию "МЫУ".
+        encode (str): Кодировка письма. По умолчанию "utf-8".
+
+    Raises:
+        SMTPException: Исключение, возникающее при ошибке отправки письма.
     """
 
     mail_login = os.getenv("mail_login")
@@ -19,11 +28,10 @@ async def send_email(receiver, theme, text, encode="utf-8"):
     charset = f"Content-Type: text/plain; charset={encode}"
     mime = "MIME-Version: 1.0"
 
-    # формируем тело письма
+    # Формируем тело письма
     body = "\r\n".join(
         (
             f"From: {mail_login}",
-            f"To: {receiver}",
             f"Subject: {theme}",
             mime,
             charset,
@@ -33,12 +41,18 @@ async def send_email(receiver, theme, text, encode="utf-8"):
     )
 
     try:
-        # подключаемся к почтовому сервису
+        # Подключаемся к почтовому сервису
         smtp = SMTP(hostname=server, port=port)
         await smtp.connect()
         await smtp.login(mail_login, password)
-        # пробуем послать письмо
-        await smtp.sendmail(mail_login, receiver, body.encode(encode))
+
+        for receiver in receivers:
+            # Формируем заголовок для каждого адресата
+            receiver_header = f"To: {receiver}"
+            full_body = "\r\n".join((receiver_header, body))
+
+            # Пробуем послать письмо
+            await smtp.sendmail(mail_login, receiver, full_body.encode(encode))
     except SMTPException as err:
         print("Что-то пошло не так...")
         raise err
