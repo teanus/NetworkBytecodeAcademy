@@ -14,7 +14,5 @@ async def get_main_menu(user_id: int) -> types.ReplyKeyboardMarkup:
     Returns:
         types.ReplyKeyboardMarkup: Главное меню для пользователя.
     """
-    if user_id in super_admin.admins:
-        return kb_admin.main_menu
-    else:
-        return kb_other.main_menu
+
+    return kb_admin.main_menu if user_id in super_admin.admins else kb_other.main_menu

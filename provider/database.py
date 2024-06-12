@@ -6,8 +6,9 @@ import pandas as pd
 import prettytable as pt
 from aiosqlite import Connection
 from openpyxl import load_workbook
-from resources import config
+
 import resources.config
+from resources import config
 
 
 class ExcelParser:
