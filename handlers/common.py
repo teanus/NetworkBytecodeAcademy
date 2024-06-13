@@ -77,7 +77,7 @@ def register_handlers_common(dp: Dispatcher) -> None:
     """
 
     dp.register_message_handler(
-        get_group, Text(["📅Расписание", "Расписание", "schedule"], ignore_case=True)
+        get_group, Text(["📅Расписание", "Расписание", "schedule", "/schedule"], ignore_case=True)
     )
     dp.register_callback_query_handler(
         group_schedule_callback_handler, state=CommonState.get_group_schedule
