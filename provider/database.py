@@ -380,14 +380,15 @@ class ScheduleDB:
                 email = row["email"]
                 last_name = row["last_name"]
                 first_name = row["first_name"]
-                await conn.execute(
-                    """
-                    INSERT INTO Emails (group_id, email, last_name, first_name) 
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (group_id, email, last_name, first_name),
-                )
 
+                if pd.notna(email) and pd.notna(last_name) and pd.notna(first_name):
+                    await conn.execute(
+                        """
+                        INSERT INTO Emails (group_id, email, last_name, first_name) 
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (group_id, email, last_name, first_name),
+                    )
             for index, row in df.iterrows():
                 # Вставка данных в таблицу Schedule
                 day_of_week = row["day_of_week"]
