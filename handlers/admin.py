@@ -8,7 +8,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import CallbackQuery
 from aiohttp import ClientError
 
-import super_admin
+from super_admin import admin
 from create_bot import bot
 from keyboards import kb_admin, kb_common
 from mail import send_email
@@ -45,7 +45,7 @@ def admin_required(
 
     @wraps(handler)
     async def wrapper(message: types.Message, *args: Any, **kwargs: Any) -> Any:
-        if await super_admin.get_admin(message.from_user.id):
+        if await admin.get_admin(message.from_user.id):
             return await handler(message, *args, **kwargs)
         else:
             await message.reply("У вас нет прав для выполнения этой команды.")
