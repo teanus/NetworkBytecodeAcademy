@@ -3,7 +3,6 @@ from typing import Any, Dict
 
 import yaml
 
-# Определение пути к файлу конфигурации config.yaml
 path: Path = Path(__file__).resolve().parents[1] / "config.yaml"
 
 

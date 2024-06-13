@@ -1,13 +1,10 @@
 import io
 from typing import Dict, List, Union
-
 import aiosqlite
 import pandas as pd
 import prettytable as pt
 from aiosqlite import Connection
 from openpyxl import load_workbook
-
-import resources.config
 from resources import config
 
 
@@ -112,7 +109,7 @@ class ScheduleDB:
         )
         await conn.commit()
         await conn.close()
-        print("Tables created successfully.")
+        print("Таблицы успешно созданы.")
 
     async def clear_database(self) -> None:
         """
@@ -175,7 +172,7 @@ class ScheduleDB:
         return [group[0] for group in groups]
 
     async def get_schedule(
-        self, group_id: int, day_of_week: str
+            self, group_id: int, day_of_week: str
     ) -> Union[List[int], None]:
         """
         Получение идентификаторов расписаний для определенной группы и дня недели.
@@ -218,12 +215,12 @@ class ScheduleDB:
         return last_row_id
 
     async def add_subject(
-        self,
-        schedule_id: int,
-        subject_name: str,
-        start_time: str,
-        end_time: str,
-        location: str,
+            self,
+            schedule_id: int,
+            subject_name: str,
+            start_time: str,
+            end_time: str,
+            location: str,
     ) -> int:
         """
         Добавление нового предмета в базу данных.
@@ -252,11 +249,11 @@ class ScheduleDB:
         return last_row_id
 
     async def add_email(
-        self,
-        group_id: int,
-        email: str,
-        last_name: str,
-        first_name: str,
+            self,
+            group_id: int,
+            email: str,
+            last_name: str,
+            first_name: str,
     ) -> int:
         """
         Добавление нового email в базу данных.
