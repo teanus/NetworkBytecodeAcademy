@@ -3,7 +3,7 @@ from aiogram.dispatcher.filters import Text
 
 from admin_code import ADMIN_CODE
 from keyboards import get_main_menu
-from super_admin import add_admin, get_admin, get_state
+from super_admin import admin
 
 
 async def start(message: types.Message) -> None:
@@ -17,7 +17,7 @@ async def start(message: types.Message) -> None:
     Args:
         message (types.Message): Сообщение от пользователя.
     """
-    is_admin = await get_admin(message.from_user.id)
+    is_admin = await admin.get_admin(message.from_user.id)
     menu = await get_main_menu(message.from_user.id)
     text = (
         'Ты администратор! Нажми на кнопку "управление" и измени расписание'
@@ -36,8 +36,9 @@ async def code_admin(message: types.Message) -> None:
     Args:
         message (types.Message): Сообщение от пользователя.
     """
-    if await get_state():
-        await add_admin(message.from_user.id)
+
+    if await admin.get_state():
+        await admin.add_admin(message.from_user.id)
         await message.reply("Вы теперь администратор! Поздравляю")
 
 

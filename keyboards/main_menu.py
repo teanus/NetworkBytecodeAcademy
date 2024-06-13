@@ -1,6 +1,6 @@
 from aiogram import types
 
-import super_admin
+from super_admin import admin
 from keyboards import kb_admin, kb_other
 
 
@@ -15,4 +15,4 @@ async def get_main_menu(user_id: int) -> types.ReplyKeyboardMarkup:
         types.ReplyKeyboardMarkup: Главное меню для пользователя.
     """
 
-    return kb_admin.main_menu if user_id in super_admin.admins else kb_other.main_menu
+    return kb_admin.main_menu if admin.get_admin(user_id) else kb_other.main_menu

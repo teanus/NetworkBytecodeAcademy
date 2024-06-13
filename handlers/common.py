@@ -16,7 +16,6 @@ class CommonState(StatesGroup):
     get_group_schedule = State()
 
 
-# 1
 async def get_group(message: types.Message) -> None:
     """
     Обработчик команды для запроса группы.
@@ -51,8 +50,6 @@ async def group_schedule_callback_handler(
         return
 
     group_name = callback_query.data
-
-    # Если нажата кнопка "Отмена", то завершаем состояние и возвращаем пользователя в главное меню
     if group_name == "назад":
         await state.finish()
         await callback_query.message.edit_reply_markup(reply_markup=None)
@@ -63,10 +60,8 @@ async def group_schedule_callback_handler(
         await callback_query.answer()
         return
 
-    # Удаляем инлайн-клавиатуру
     await callback_query.message.edit_reply_markup(reply_markup=None)
 
-    # Получаем расписание и отправляем его
     schedule = await db.get_weekly_schedule_by_group(group_name.lower())
     await callback_query.message.answer(schedule, parse_mode="Markdown")
     await state.finish()
